@@ -7,6 +7,7 @@
 #include <stack>
 #include <fstream>
 #include <cmath>
+#include <iomanip>
 
 class Graph {
 private:
@@ -38,7 +39,57 @@ public:
         adjMatrix[u][v] = distance;
     }
 
-    //void shareTravel()
+    void specialResource(const std::string& source){
+        int sourceIdx = index[source];
+        std::priority_queue<std::pair<int,int>, std::vector<std::pair<int,int>>, std::greater<std::pair<int,int>>> queue;
+        std::vector<int> parent(islandCount, -1);
+        std::vector<int> key(islandCount, std::numeric_limits<int>::max());
+        std::vector<bool> visited(islandCount, false);
+
+        queue.push({0, sourceIdx});
+        key[sourceIdx] = 0;
+
+        while(!queue.empty()){
+            int island = queue.top().second;
+            queue.pop();
+
+            if(visited[island] == true) continue;
+            visited[island] = true;
+
+            for(int adjacent = 0; adjacent < islandCount; adjacent++){
+                if(adjMatrix[island][adjacent] != std::numeric_limits<int>::max()){
+                    int neighbor = adjacent;
+                    int distance = adjMatrix[island][adjacent];
+
+                    if(visited[neighbor] == false && key[neighbor] > distance){
+                        key[neighbor] = distance;
+                        queue.push({key[neighbor], neighbor});
+                        parent[neighbor] = island;
+                    }
+                }
+            }
+        }
+
+        std::cout << "Paths from " << source << std::endl;
+        for(int i = 0; i < islandCount; i++){
+            if(i != sourceIdx && parent[i] != -1){
+                std::stack<int> routeStack;
+                int current = i;
+                while(current != -1){
+                    routeStack.push(current);
+                    current = parent[current];
+                }
+                routeStack.pop();
+                std::cout << std::setw(3) << index[source];
+                while(!routeStack.empty()){
+                    std::cout << std::setw(3) << "->" << std::setw(3);
+                    std::cout << routeStack.top();
+                    routeStack.pop();
+                }
+            std::cout << std::endl;
+            }
+        }
+    }
 
     void shareKnowledge(const std::string& start){
         int startIdx = index[start];
@@ -252,7 +303,9 @@ int main(){
 
     graph.addRoute(islands[42], islands[6], 3998.79);
 
-    graph.shareKnowledge("Big Island");
-
+    // Algorithms
+    graph.shareKnowledge(islands[0]);
+    graph.specialResource(islands[6]);
+    graph.specialResource(islands[1]);
     return 0;
 }
