@@ -48,33 +48,49 @@ class User:
     def connection(self, user, con_type):
         self.connections[user] = con_type
 
-def keyword(posts):
+def keywords_map(posts):
     keyword_map = defaultdict(list)
     for post in posts:
         raw_words = post.content.split()
         for word in set(raw_words):
             keyword_map[word.lower()].append(post)
+    return keyword_map
 
-def generate_word_cloud(posts, users, include=None, exclude=None, attributes=None):
-    filtered_posts = []
-    for post in posts:
-        if include and not any(kw in post.content for kw in include):
-            continue
-        if exclude and any(kw in post.content for kw in exclude):
-            continue
-        if attributes:
-            uploader = next((user for user in users if user.username == post.user), None)
-            if not uploader:
-                continue
-            if 'age' in attributes and attributes['age'] != uploader.attributes['age']:
-                continue
-            if 'gender' in attributes and attributes['gender'] != uploader.attributes['gender']:
-                continue
-            if 'country' in attributes and attributes['country'] != uploader.attributes['country']:
-                continue
-            if 'job' in attributes and attributes['job'] != uploader.attributes['job']:
-                continue
-        filtered_posts.append(post)
+def attributes_map(users):
+    attribute_map = defaultdict(lambda: defaultdict(list))
+    for user in users:
+        attribute_map["age"][user.attributes['age']].append(user)
+        attribute_map["gender"][user.attributes['gender']].append(user)
+        attribute_map["country"][user.attributes['country']].append(user)
+        attribute_map["job"][user.attributes['job']].append(user)
+    return attribute_map
+
+def word_cloud(posts, users, keyword_map, attribute_map, include = None, exclude = None, attributes = None):
+    filtered_posts = set(posts)
+
+    # Attribute algorithm
+    if attributes:
+        filtered_users = set(users)
+        attribute_posts = set()
+        for attribute, value in attributes.items():
+            filtered_users.intersection_update(set(attribute_map[attribute].get(value, [])))
+        for user in filtered_users:
+            attribute_posts.update(user.uploads)
+        filtered_posts.intersection_update(attribute_posts)
+
+    # Include algorithm
+    if include:
+        included_posts = set()
+        for keyword in include:
+            included_posts.update(keyword_map.get(keyword.lower(), []))
+        filtered_posts.intersection_update(included_posts)
+
+    # Exclude algorithm
+    if exclude:
+        excluded_posts = set()
+        for keyword in exclude:
+            excluded_posts.update(keyword_map.get(keyword.lower(), []))
+        filtered_posts.difference_update(excluded_posts)
 
     raw_text = " ".join(post.content for post in filtered_posts)
 
@@ -125,13 +141,17 @@ def main():
     posts = [post1, post2, post3]
     users = [Mike, Vic, PizzaHater321]
 
+    keyword_map = keywords_map(posts)
+    attribute_map = attributes_map(users)
 
-    generate_word_cloud(
+    word_cloud(
         posts,
         users,
-        include=None,
-        exclude=None,
-        attributes={'country':"Italy"}
+        keyword_map,
+        attribute_map,
+        include = ["Pizza"],
+        exclude = None,
+        attributes = {'country':"Italy"},
     )
 
 if __name__ == "__main__":
